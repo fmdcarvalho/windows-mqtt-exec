@@ -10,12 +10,11 @@ conf = {
     "lwtTopic" : "some/thing/lwt"
 }
 
-configMsgTemplate ='{{"name": "{name}","command_topic":"{cmd_topic}","state_topic":"{state_topic}","value_template":"{{value_json.POWER}}","payload_off":"OFF","payload_on":"ON","availability_topic":"{lwt_topic}","payload_available":"Online","payload_not_available":"Offline"}}' 
+configMsgTemplate ='{{"name": "{name}","command_topic":"{cmd_topic}","state_topic":"{state_topic}","value_template":{{{{value_json.POWER}}}}, "payload_off":"OFF","payload_on":"ON","availability_topic":"{lwt_topic}","payload_available":"Online","payload_not_available":"Offline"}}'
 
 stateMsgTemplate = '{{"POWER":"{state}"}}'
 
 class WinClient:
-    
 
     def __init__(self, host, conf, port=1883):
         self.client = mqtt.Client(str(uuid.uuid4))
@@ -25,13 +24,18 @@ class WinClient:
         self.subTopics()
         self.pushLWT()
         self.pushConfigs()
-        self.pushStates()
+        #self.pushStates()
         self.client.on_message = self.on_message
+        print("qwe2")
 
     def on_message(self, client, userdata, message):
-        print("message received " ,str(message.payload.decode("utf-8")))
-        print("message topic=",message.topic)
-        self.pushStates()
+        print("message received ", str(message.payload.decode("utf-8")))
+        print("message topic=", message.topic)
+        payload = str(message.payload.decode("utf-8"))
+        msg = stateMsgTemplate.format(state=payload)
+        print(msg)
+        self.client.publish(conf["stateTopic"], str(msg), qos=0)
+        print("qwE")
     
     def subTopics(self):
         for c in self.confs:
@@ -43,7 +47,7 @@ class WinClient:
         for c in self.confs:
             msg = configMsgTemplate.format(name=c['name'], cmd_topic=c['cmdTopic'], state_topic=c['stateTopic'], lwt_topic=c['lwtTopic'])
             print(msg)
-            self.client.publish(c["configTopic"], msg)
+            self.client.publish(c["configTopic"], msg, retain=True)
 
     def pushLWT(self):
         for c in self.confs:
@@ -53,12 +57,12 @@ class WinClient:
         for c in self.confs:
             msg = stateMsgTemplate.format(state="ON")
             print(msg)
-            self.client.publish(c["stateTopic"], '{"POWER":"ON"}', retain=True)
+            self.client.publish(c["stateTopic"], msg)
 
     def run(self):
         self.client.loop_start()
         while True:
-            time.sleep(1000)
+            time.sleep(1)
 
 w = WinClient('127.0.0.1', conf, 7001)
 w.run()
