@@ -1,6 +1,7 @@
 import paho.mqtt.client as mqtt 
 import time
 import uuid
+import subprocess
 
 conf = {
     "name" : "win",
@@ -32,11 +33,16 @@ class WinClient:
         print("message received ", str(message.payload.decode("utf-8")))
         print("message topic=", message.topic)
         payload = str(message.payload.decode("utf-8"))
+
         msg = stateMsgTemplate.format(state=payload)
+        if "ON" in payload:
+            res = subprocess.check_output(["start", "../nircmd/setSpeakers.bat"])
+            self.client.publish(conf["stateTopic"], str(msg), qos=0)
+        elif "OFF" in payload:
+            res = subprocess.check_output(["start", "../nircmd/setTV.bat"])
+            self.client.publish(conf["stateTopic"], str(msg), qos=0)
         print(msg)
-        self.client.publish(conf["stateTopic"], str(msg), qos=0)
-        print("qwE")
-    
+
     def subTopics(self):
         for c in self.confs:
             cmdTopic = c['cmdTopic']
